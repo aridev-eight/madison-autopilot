@@ -1,3 +1,20 @@
 .env
 data/*
+marketing-bot-*.json# Python virtual environment
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+# Environment files
+.env
+.env.local
+# Credentials and secrets
+*.json
 marketing-bot-*.json
+# Mac system files
+.DS_Store
+# Node modules (for when we add Next.js)
+node_modules/
+.next/
