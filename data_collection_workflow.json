@@ -1,0 +1,487 @@
+{
+  "name": "Data Collection",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1088,
+        432
+      ],
+      "id": "4a5c6165-9421-439b-a2ac-7a76af1223ee",
+      "name": "Collect Brand Data",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "returnAll": true,
+        "filters": {
+          "channelId": "UCIG1k8umaCIIrujZPzZPIMA"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        352
+      ],
+      "id": "d3e25208-76ec-4ab2-ba24-bb147d986bfe",
+      "name": "YT Google videos",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "YSvgSGJSJFEA5Uox",
+          "name": "YouTube account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "subreddit": "google",
+        "returnAll": true,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.reddit",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        560
+      ],
+      "id": "e9fc81d8-434f-4548-8d82-eb62841c38e3",
+      "name": "Reddit - Google Posts",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "redditOAuth2Api": {
+          "id": "qUmb4sCbfYhjGkLe",
+          "name": "Reddit account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://blog.google/rss/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -112,
+        784
+      ],
+      "id": "3a4c7eb3-1de0-4450-a632-1ebffafd61a4",
+      "name": "Google Blog RSS",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        512,
+        528
+      ],
+      "id": "8ecaae6f-a30c-40c2-8e21-3ad865bb51a7",
+      "name": "Merge All Brand Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\n\nconst structured = {\n  collection_metadata: {\n    timestamp: new Date().toISOString(),\n    target_brand: \"Google\",\n    total_records: allItems.length,\n    collection_date: new Date().toISOString().split('T')[0]\n  },\n  data: allItems.map(item => ({\n    source: item.json.source || 'unknown',\n    ...item.json\n  }))\n};\n\nreturn [{ json: structured }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        560
+      ],
+      "id": "c94bcde5-45f2-4670-9869-2f2379e11ace",
+      "name": "Add Metadata"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simple RSS parser for Google Blog\nconst rssText = $input.first().json.data;\n\n// Extract items using regex (basic parsing)\nconst itemRegex = /<item>([\\s\\S]*?)<\\/item>/g;\nconst items = [];\nlet match;\n\nwhile ((match = itemRegex.exec(rssText)) !== null) {\n  const item = match[1];\n  \n  const getTag = (tag) => {\n    const regex = new RegExp(`<${tag}[^>]*>([\\\\s\\\\S]*?)<\\/${tag}>`, 'i');\n    const m = item.match(regex);\n    return m ? m[1].trim() : '';\n  };\n  \n  items.push({\n    title: getTag('title'),\n    link: getTag('link'),\n    pubDate: getTag('pubDate'),\n    description: getTag('description').replace(/<[^>]+>/g, ''),\n    category: getTag('category')\n  });\n}\n\nreturn items.map(item => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        736
+      ],
+      "id": "e7720ee5-063a-4511-990e-9fe1af5fa0a3",
+      "name": "Parse RSS to JSON"
+    },
+    {
+      "parameters": {
+        "name": "=google_brand_data_{{ $now.format('MM-DD-hh-mm') }}.json",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "https://drive.google.com/drive/folders/1294YNVHgeJsgUHY4uX5sTCTb57HEx7dt",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1056,
+        368
+      ],
+      "id": "40ee180d-d919-4658-9c91-335e22321b12",
+      "name": "Save Brand Data to Drive",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "RNaFGhy82DnpfTgC",
+          "name": "Google Drive account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "command": "python3 /Users/arundhati/Desktop/n8n-scripts/collect_google_trends.py"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        96
+      ],
+      "id": "21392b0b-74df-43df-acb0-548dbc7ac9f4",
+      "name": "Run Google Trends Script",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/Users/arundhati/Desktop/n8n-scripts/google_trends_latest.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        32,
+        96
+      ],
+      "id": "e0652cbf-22b5-4e33-a6bf-c781738daec8",
+      "name": "Read Trends Data"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        240,
+        96
+      ],
+      "id": "5e70745b-c13c-4896-8386-a25fd39e23c0",
+      "name": "Parse Trends JSON"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        864,
+        368
+      ],
+      "id": "673a7837-c80f-40d4-a0bb-c0c312ce53b5",
+      "name": "Convert to JSON"
+    },
+    {
+      "parameters": {
+        "sendTo": "arundhatib.work@gmail.com",
+        "subject": "=Error in n8n workflow",
+        "emailType": "text",
+        "message": "=Timestamp: {{ $now.toISO() }}\n\nError Details:\n{{ $json.error }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        848,
+        912
+      ],
+      "id": "d662dfff-fbd0-43e6-9682-e30c9be685dd",
+      "name": "Send a message",
+      "webhookId": "6bba1c10-d06f-4573-a118-b6f62b875b1a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "rdYFNz80J2Klgo6C",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Clean and filter Reddit data to keep only relevant fields\nconst items = $input.all();\n\nconst cleanedItems = items.map(item => ({\n  json: {\n    source: 'reddit',\n    title: item.json.title,\n    author: item.json.author,\n    subreddit: item.json.subreddit,\n    url: item.json.url,\n    score: item.json.score,\n    upvote_ratio: item.json.upvote_ratio,\n    num_comments: item.json.num_comments,\n    created_utc: item.json.created_utc,\n    selftext: item.json.selftext || '',\n    post_hint: item.json.post_hint || 'text',\n    permalink: item.json.permalink\n  }\n}));\n\nreturn cleanedItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        544
+      ],
+      "id": "6c9d80bd-6cc3-47f1-86a1-34120e04bb97",
+      "name": "Clean up Reddit Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Clean YouTube data to keep only relevant fields\nconst items = $input.all();\n\nconst cleanedItems = items.map(item => {\n  const snippet = item.json.snippet || {};\n  const statistics = item.json.statistics || {};\n  \n  return {\n    json: {\n      source: 'youtube',\n      video_id: item.json.id,\n      title: snippet.title,\n      description: snippet.description,\n      channel_title: snippet.channelTitle,\n      channel_id: snippet.channelId,\n      published_at: snippet.publishedAt || snippet.publishTime,\n      thumbnail_url: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url,\n      view_count: parseInt(statistics.viewCount) || 0,\n      like_count: parseInt(statistics.likeCount) || 0,\n      comment_count: parseInt(statistics.commentCount) || 0,\n      video_url: `https://www.youtube.com/watch?v=${item.json.id}`\n    }\n  };\n});\n\nreturn cleanedItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        336
+      ],
+      "id": "6fb7fbeb-e52c-4a98-9caa-fba1e0d3278b",
+      "name": "Clean Youtube Data"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Collect Brand Data": {
+      "main": [
+        [
+          {
+            "node": "Reddit - Google Posts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Blog RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Run Google Trends Script",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge All Brand Data",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "YT Google videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YT Google videos": {
+      "main": [
+        [
+          {
+            "node": "Clean Youtube Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reddit - Google Posts": {
+      "main": [
+        [
+          {
+            "node": "Clean up Reddit Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Blog RSS": {
+      "main": [
+        [
+          {
+            "node": "Parse RSS to JSON",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Brand Data": {
+      "main": [
+        [
+          {
+            "node": "Add Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Metadata": {
+      "main": [
+        [
+          {
+            "node": "Convert to JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse RSS to JSON": {
+      "main": [
+        [
+          {
+            "node": "Merge All Brand Data",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Save Brand Data to Drive": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Google Trends Script": {
+      "main": [
+        [
+          {
+            "node": "Read Trends Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Trends Data": {
+      "main": [
+        [
+          {
+            "node": "Parse Trends JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Trends JSON": {
+      "main": [
+        [
+          {
+            "node": "Merge All Brand Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to JSON": {
+      "main": [
+        [
+          {
+            "node": "Save Brand Data to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean up Reddit Data": {
+      "main": [
+        [
+          {
+            "node": "Merge All Brand Data",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Clean Youtube Data": {
+      "main": [
+        [
+          {
+            "node": "Merge All Brand Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "45d76b68-11ae-45b4-833e-65a8aaaee2e4",
+  "meta": {
+    "instanceId": "db832659a5517b6c0d170526de9dc82e6c9953b5e94a8db4af89cab72b578e17"
+  },
+  "id": "cnaHCj74r13U4q8D",
+  "tags": []
+}
